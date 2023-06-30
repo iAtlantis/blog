@@ -5,16 +5,16 @@
 
 # Site
 title: Happy Cloud
-subtitle: ''
-description: ''
+subtitle: 'Somethings Awesome'
+description: '一个有趣的灵魂'
 keywords:
 author: Allon
-language: zh
+language: zh-CN
 timezone: ''
 
 # URL
 ## Set your site url here. For example, if you use GitHub Page, set url as 'https://username.github.io/project'
-url: http://example.com
+url: http://github.com/iAtlantis/blog
 permalink: :year/:month/:day/:title/
 permalink_defaults:
 pretty_urls:
