@@ -4,6 +4,7 @@ date: 2023-07-19 16:34:37
 tags:
 categories:
 - docker
+- vscode
 ---
 
 # 背景
