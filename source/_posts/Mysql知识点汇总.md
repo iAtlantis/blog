@@ -10,12 +10,13 @@ categories:
 # 大纲
 > 本文是参考自「[小林图解](https://xiaolincoding.com/mysql/index/page.html)」并整理一些见解所得
 > 1. 一条sql的执行流程
+>       连接 -> 缓存 -> 解析 -> 执行( 预处理 -> 优化 -> 执行计划)
 > 2. Mysql是如何存储数据的
 >       行-> 页 -> 区 -> 段 -> 独占表空间。
 >       行作为记录单位，常见Compact形式：变长字段长度+Null值列表+行记录头｜row_id+trx_id+roo_ptr｜真实数据
 > 3. Mysql中的索引
 >       
-> 4. 
+> 4. Mysql中的锁
 
 
 # 索引
@@ -159,6 +160,49 @@ PPS：全表扫描，锁是在遍历索引的时候加上的，并不是**针对
 [从字节的例题来看为什么发生死锁](https://xiaolincoding.com/mysql/lock/show_lock.html#time-3-阶段加锁分析)
 # 日志
 
-## undolog redolog binlog
+> Mysql在执行更新语句时，会使用三个日志：
+## undolog 
+
+> 是 Innodb 存储引擎层生成的日志，实现了事务中的**原子性**，主要用于事务回滚和 MVCC。
+> undolog日志还可通过 ReadView + undo log 实现 MVCC（多版本并发控制）。
+
+即使没有使用`begin`和`commit`仍，mysql会自动开通`autocommit`开进行「隐事务」的提交。在事务没提交前，会将记录记录到undolog日志内。
+
+
+## redolog 
+
+> 是 Innodb 存储引擎层生成的日志，实现了事务中的**持久性**，主要用于掉电等故障恢复；
+
+为了防止断电导致数据丢失的问题，当有一条记录需要更新的时候，InnoDB 引擎就会先更新内存（同时标记为脏页），然后将本次对这个页的修改以 redo log 的形式记录下来，这个时候更新就算完成了。后续，InnoDB 引擎**会在适当的时候，由后台线程将缓存在 Buffer Pool 的脏页刷新到磁盘里**，这就是 WAL （Write-Ahead Logging）技术。WAL 技术指的是， MySQL 的写操作并不是立刻写到磁盘上，而是先写日志，然后在合适的时间再写到磁盘上。
+
+PS：redolog是先写到内存上的，pool中，再集中写入到磁盘持久化的。
+
+什么时候刷新至磁盘呢？
+- MySQL 正常关闭时；
+- 当 redo log buffer 中记录的写入量大于 redo log buffer 内存空间的一半时，会触发落盘；
+- InnoDB 的后台线程每隔 1 秒，将 redo log buffer 持久化到磁盘。
+- 每次事务提交时都将缓存在 redo log buffer 里的 redo log 直接持久化到磁盘（这个策略可由 innodb_flush_log_at_trx_commit 参数控制，下面会说）。
+
+![](../img/日志-Snipaste_2023-07-30_19-56-19.png)
+
+与undolog的区别：
+- redo log 记录了此次事务「完成后」的数据状态，记录的是**更新之后**的值；用于提交事务后，发生崩溃恢复数据。
+- undo log 记录了此次事务「开始前」的数据状态，记录的是**更新之前**的值；用于未提交事务时，发生崩溃恢复数据。
+
+为什么需要redolog呢？
+- 实现事务的持久性，让 MySQL 有 crash-safe（崩溃恢复） 的能力，能够保证 MySQL 在任何时间段突然崩溃，重启后之前已提交的记录都不会丢失；
+- 将写操作从「随机写」变成了「顺序写」，提升 MySQL 写入磁盘的性能。
+
+
+## binlog
+
+> 是 Server 层生成的日志（所有存储引擎均可用），主要用于数据备份和主从复制；
+
+MySQL 在完成一条更新操作后，Server 层还会生成一条 binlog，等之后事务提交的时候，会将该事物执行过程中产生的所有 binlog 统一写 入 binlog 文件。binlog 文件是记录了所有数据库表结构变更和表数据修改的日志，不会记录查询类的操作，比如 SELECT 和 SHOW 操作。
+
+## Mysql是如何实现主从复制的
+
+## 磁盘IO很高，如何优化？
+
 
 # 内存
