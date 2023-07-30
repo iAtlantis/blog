@@ -1,4 +1,5 @@
 themes
 node_modules
-public/*
-db.json
+public/
+*.json
+
